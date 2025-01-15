@@ -1,7 +1,8 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { Eraser, Pencil, RotateCcw, Download, Palette, CheckCircle } from 'lucide-react';
+import emailjs from '@emailjs/browser';
 
-interface DrawingCanvasProps {
+interface WordCloudProps {
   backgroundImage?: string;
   twitterUsername: string;
 }
@@ -19,10 +20,10 @@ const COLORS = [
   '#8b4513', // Saddle Brown
 ];
 
-export function DrawingCanvas({ 
+export function WordCloud({ 
   backgroundImage = 'https://i.imgur.com/s0afmCO.png',
   twitterUsername 
-}: DrawingCanvasProps) {
+}: WordCloudProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [tool, setTool] = useState<'pen' | 'eraser'>('pen');
@@ -143,7 +144,7 @@ export function DrawingCanvas({
     const data = canvasRef.current.toDataURL('image/png', 1.0);
     setImageData(data);
     
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toISOString().split('T')[0]; // Format: YYYY-MM-DD
     
     // Create CSV data with PNG link
     const csvData = [
@@ -170,16 +171,22 @@ export function DrawingCanvas({
     
     setIsSending(true);
     try {
-      // For now, just save the image locally since we don't have EmailJS configured
-      const link = document.createElement('a');
-      link.download = `${twitterUsername}-pass.png`;
-      link.href = imageData;
-      link.click();
-      
-      alert('Your pass has been saved! You can share it on Twitter.');
+      // Send email notification
+      await emailjs.send(
+        'service_your_service_id',
+        'template_your_template_id',
+        {
+          to_email: 'Johnbummit@gmail.com',
+          twitter_username: twitterUsername,
+          image_data: imageData,
+        },
+        'your_public_key'
+      );
+
+      alert('Your pass has been submitted for signing! You will receive an email when it's ready.');
     } catch (error) {
-      console.error('Error saving pass:', error);
-      alert('There was an error saving your pass. Please try again.');
+      console.error('Error requesting signing:', error);
+      alert('There was an error submitting your pass. Please try again.');
     } finally {
       setIsSending(false);
     }

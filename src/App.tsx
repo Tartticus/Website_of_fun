@@ -45,7 +45,7 @@ function App() {
           <div className="bg-white rounded-lg shadow-lg p-6">
             <div className="flex flex-col items-center gap-6">
               <img 
-                src="https://images.unsplash.com/photo-1517849845537-4d257902454a" 
+                src="https://i.imgur.com/4lpsqSr.jpeg" 
                 alt="Profile" 
                 className="w-48 h-48 rounded-full object-cover shadow-lg"
               />
@@ -53,13 +53,13 @@ function App() {
                 <h1 className="text-3xl font-bold text-gray-800 mb-2">Welcome to My Page</h1>
                 <p className="text-gray-600 mb-4">Feel free to explore all the features!</p>
                 <a 
-                  href="https://x.com/JohnBummit" 
+                  href="https://Twitter.com/JohnBummit" 
                   target="_blank" 
                   rel="noopener noreferrer" 
                   className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
                 >
                   <Twitter className="w-5 h-5" />
-                  Follow me on Twitter
+                  Follow me on Twitter, nigga
                 </a>
               </div>
             </div>
@@ -93,8 +93,7 @@ function App() {
             </div>
 
             <p className="text-gray-600 mb-6">
-              Express yourself by drawing on the canvas below. Use the pen tool to draw,
-              eraser to remove mistakes, and download your creation when you're done!
+              Express yourself by drawing on the canvas below, nigga
             </p>
 
             <DrawingCanvas twitterUsername={twitterUsername} />
