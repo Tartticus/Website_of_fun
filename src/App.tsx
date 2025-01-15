@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { DrawingCanvas } from './components/DrawingCanvas';
+import { SongClassifier } from './components/SongClassifier';
 import { Palette, Music, Twitter, Phone, Home } from 'lucide-react';
 
 function App() {
@@ -50,16 +51,16 @@ function App() {
                 className="w-48 h-48 rounded-full object-cover shadow-lg"
               />
               <div className="text-center">
-                <h1 className="text-3xl font-bold text-gray-800 mb-2">Welcome to My Page</h1>
+                <h1 className="text-3xl font-bold text-gray-800 mb-2">Welcome to My Page, nigga!</h1>
                 <p className="text-gray-600 mb-4">Feel free to explore all the features!</p>
                 <a 
-                  href="https://Twitter.com/JohnBummit" 
+                  href="https://x.com/JohnBummit" 
                   target="_blank" 
                   rel="noopener noreferrer" 
                   className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
                 >
                   <Twitter className="w-5 h-5" />
-                  Follow me on Twitter, nigga
+                  Follow me on Twitter
                 </a>
               </div>
             </div>
@@ -70,7 +71,7 @@ function App() {
           <div className="bg-white rounded-lg shadow-lg p-6">
             <div className="flex items-center gap-3 mb-6">
               <Palette className="w-8 h-8 text-blue-500" />
-              <h1 className="text-3xl font-bold text-gray-800">Draw Your Pass</h1>
+              <h1 className="text-3xl font-bold text-gray-800">N Word Pass</h1>
             </div>
             
             <div className="mb-6">
@@ -92,18 +93,13 @@ function App() {
               </div>
             </div>
 
-            <p className="text-gray-600 mb-6">
-              Express yourself by drawing on the canvas below, nigga
-            </p>
-
             <DrawingCanvas twitterUsername={twitterUsername} />
           </div>
         )}
 
         {activeTab === 'song' && (
           <div className="bg-white rounded-lg shadow-lg p-6">
-            <h2 className="text-2xl font-bold text-gray-800 mb-4">Song Classifier</h2>
-            <p className="text-gray-600">Coming soon...</p>
+            <SongClassifier />
           </div>
         )}
 
@@ -117,7 +113,7 @@ function App() {
         {activeTab === 'text' && (
           <div className="bg-white rounded-lg shadow-lg p-6">
             <h2 className="text-2xl font-bold text-gray-800 mb-4">Text Me</h2>
-            <p className="text-gray-600">Coming soon...</p>
+            <p className="text-gray-600">657-544-5666</p>
           </div>
         )}
       </div>

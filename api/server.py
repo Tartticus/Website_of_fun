@@ -10,7 +10,7 @@ from wordcloud import WordCloud
 
 class LyricsAnalyzer:
     def __init__(self):
-        self.GENIUS_API_TOKEN = 'Your API Key'  # Replace with your Genius API token
+        self.GENIUS_API_TOKEN =  'zMs-ogdbxt0F5CzmO52iLZ9A3jgj3ZZQWvNTNyTSm05x7z7yaLgWSlJFMa7cX92f' # Replace with your Genius API token
         self.spotify_token = None
         self.setup_database()
     
@@ -28,8 +28,8 @@ class LyricsAnalyzer:
         ''')
 
     def get_spotify_token(self):
-        CLIENT_ID = 'YOUR CLIENT ID'  # Replace with your Spotify Client ID
-        CLIENT_SECRET = 'YOUR CLIENT SECRET'  # Replace with your Spotify Client Secret
+        CLIENT_ID = '56d3b4e5526845a09849a6757a0e7089'
+        CLIENT_SECRET =  '4d6a6149f01240d589f2b9f7738a5159'
         
         TOKEN_URL = 'https://accounts.spotify.com/api/token'
         auth_str = f"{CLIENT_ID}:{CLIENT_SECRET}"
