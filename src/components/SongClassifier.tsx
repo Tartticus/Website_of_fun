@@ -1,242 +1,222 @@
-from http.server import HTTPServer, BaseHTTPRequestHandler
-import json
-import requests
-import base64
-from bs4 import BeautifulSoup
-import duckdb
-import matplotlib.pyplot as plt
-from io import BytesIO
-from wordcloud import WordCloud
+import React, { useState } from 'react';
+import axios from 'axios';
+import { Search, AlertCircle, Music2 } from 'lucide-react';
 
-class LyricsAnalyzer:
-    def __init__(self):
-        self.GENIUS_API_TOKEN = 'zMs-ogdbxt0F5CzmO52iLZ9A3jgj3ZZQWvNTNyTSm05x7z7yaLgWSlJFMa7cX92f'  # Replace with your Genius API token
-        self.spotify_token = None
-        self.setup_database()
+interface Album {
+  name: string;
+  id: string;
+  image: string;
+}
+
+interface WordCount {
+  count: number;
+  album_art?: string;
+  cached: boolean;
+}
+
+interface WordCloudData {
+  wordcloud: string;
+}
+
+export function SongClassifier() {
+  const [artist, setArtist] = useState('');
+  const [albums, setAlbums] = useState<Album[]>([]);
+  const [selectedAlbum, setSelectedAlbum] = useState('');
+  const [word, setWord] = useState('');
+  const [result, setResult] = useState<WordCount | null>(null);
+  const [wordcloud, setWordcloud] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const fetchAlbums = async () => {
+    if (!artist) return;
     
-    def setup_database(self):
-        self.con = duckdb.connect(database='lyrics_cache1.db')
-        self.con.execute('''
-            CREATE TABLE IF NOT EXISTS counts (
-                Artist TEXT,
-                Album TEXT,
-                Word TEXT,
-                Count INTEGER,
-                Album_Art TEXT,
-                PRIMARY KEY (Artist, Album, Word)
-            )
-        ''')
+    setLoading(true);
+    setError('');
+    try {
+      const response = await axios.get(`http://localhost:8000/api/artist/${encodeURIComponent(artist)}`);
+      if (response.data.error) {
+        setError(response.data.error);
+        return;
+      }
+      setAlbums(response.data.albums || []);
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to fetch albums');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    def get_spotify_token(self):
-        CLIENT_ID =  '56d3b4e5526845a09849a6757a0e7089' # Replace with your Spotify Client ID
-        CLIENT_SECRET = '4d6a6149f01240d589f2b9f7738a5159'  # Replace with your Spotify Client Secret
-        
-        TOKEN_URL = 'https://accounts.spotify.com/api/token'
-        auth_str = f"{CLIENT_ID}:{CLIENT_SECRET}"
-        b64_auth_str = base64.b64encode(auth_str.encode()).decode()
-        
-        headers = {'Authorization': f'Basic {b64_auth_str}'}
-        data = {'grant_type': 'client_credentials'}
-        
-        response = requests.post(TOKEN_URL, headers=headers, data=data)
-        if response.status_code == 200:
-            return response.json()['access_token']
-        return None
+  const analyzeWord = async () => {
+    if (!artist || !selectedAlbum || !word) {
+      setError('Please fill in all fields');
+      return;
+    }
 
-    def get_spotify_artist_id(self, artist_name):
-        if not self.spotify_token:
-            self.spotify_token = self.get_spotify_token()
-        
-        headers = {'Authorization': f'Bearer {self.spotify_token}'}
-        search_url = f"https://api.spotify.com/v1/search?q={artist_name}&type=artist"
-        response = requests.get(search_url, headers=headers)
-        
-        if response.status_code == 200:
-            artists = response.json()["artists"]["items"]
-            if artists:
-                return artists[0]["id"]
-        return None
+    setLoading(true);
+    setError('');
+    try {
+      const response = await axios.post('http://localhost:8000/api/analyze', {
+        artist,
+        album: selectedAlbum,
+        word
+      });
+      if (response.data.error) {
+        setError(response.data.error);
+        return;
+      }
+      setResult(response.data);
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Analysis failed');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    def get_spotify_albums(self, artist_id):
-        headers = {'Authorization': f'Bearer {self.spotify_token}'}
-        albums_url = f"https://api.spotify.com/v1/artists/{artist_id}/albums"
-        response = requests.get(albums_url, headers=headers)
-        
-        if response.status_code == 200:
-            albums = response.json()["items"]
-            return [{"name": album["name"], "id": album["id"], "image": album["images"][0]["url"] if album["images"] else None} for album in albums]
-        return []
+  const generateWordCloud = async () => {
+    if (!artist || !selectedAlbum) {
+      setError('Please select an artist and album');
+      return;
+    }
 
-    def get_spotify_album_tracks(self, album_id):
-        headers = {'Authorization': f'Bearer {self.spotify_token}'}
-        tracks_url = f"https://api.spotify.com/v1/albums/{album_id}/tracks"
-        response = requests.get(tracks_url, headers=headers)
-        
-        if response.status_code == 200:
-            tracks = response.json()["items"]
-            return [track["name"] for track in tracks]
-        return []
+    setLoading(true);
+    setError('');
+    try {
+      const response = await axios.post<WordCloudData>('http://localhost:8000/api/wordcloud', {
+        artist,
+        album: selectedAlbum
+      });
+      if (response.data.error) {
+        setError(response.data.error);
+        return;
+      }
+      if (response.data.wordcloud) {
+        setWordcloud(response.data.wordcloud);
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to generate word cloud');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    def get_song_lyrics(self, song_url):
-        page = requests.get(song_url)
-        soup = BeautifulSoup(page.text, 'html.parser')
-        lyrics_div = soup.find('div', class_='lyrics') or soup.find('div', class_='Lyrics__Root-sc-1ynbvzw-0')
-        return lyrics_div.get_text() if lyrics_div else ""
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-3 mb-6">
+        <Music2 className="w-8 h-8 text-blue-500" />
+        <h1 className="text-3xl font-bold text-gray-800">Lyrics Analyzer</h1>
+      </div>
 
-    def get_song_info_from_genius(self, song_name, artist_name):
-        headers = {'Authorization': f'Bearer {self.GENIUS_API_TOKEN}'}
-        search_url = f"https://api.genius.com/search?q={song_name} {artist_name}"
-        response = requests.get(search_url, headers=headers)
-        
-        if response.status_code == 200:
-            hits = response.json()["response"]["hits"]
-            if hits:
-                song_url = hits[0]["result"]["url"]
-                return self.get_song_lyrics(song_url)
-        return ""
+      <div className="space-y-6">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Artist
+          </label>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={artist}
+              onChange={(e) => setArtist(e.target.value)}
+              className="flex-1 rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              placeholder="Enter artist name"
+            />
+            <button
+              onClick={fetchAlbums}
+              disabled={!artist || loading}
+              className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              <Search className="w-4 h-4" />
+              {loading ? 'Loading...' : 'Get Albums'}
+            </button>
+          </div>
+        </div>
 
-    def count_word_occurrences(self, album_id, artist_name, word):
-        tracks = self.get_spotify_album_tracks(album_id)
-        if not tracks:
-            return 0, None
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Album
+          </label>
+          <select
+            value={selectedAlbum}
+            onChange={(e) => setSelectedAlbum(e.target.value)}
+            className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            disabled={albums.length === 0}
+          >
+            <option value="">Select an album</option>
+            {albums.map((album) => (
+              <option key={album.id} value={album.name}>
+                {album.name}
+              </option>
+            ))}
+          </select>
+        </div>
 
-        word_count = 0
-        for track_name in tracks:
-            lyrics = self.get_song_info_from_genius(track_name, artist_name)
-            word_count += lyrics.lower().count(word.lower())
-        
-        return word_count
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Word to Count
+          </label>
+          <input
+            type="text"
+            value={word}
+            onChange={(e) => setWord(e.target.value)}
+            className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            placeholder="Enter word to count"
+          />
+        </div>
 
-    def get_word_count(self, artist_name, album_name, word):
-        # Check cache first
-        result = self.con.execute(
-            "SELECT Count, Album_Art FROM counts WHERE Artist = ? AND Album = ? AND Word = ?",
-            [artist_name, album_name, word]
-        ).fetchone()
-        
-        if result:
-            return {"count": result[0], "album_art": result[1], "cached": True}
-        
-        # If not in cache, calculate
-        artist_id = self.get_spotify_artist_id(artist_name)
-        if not artist_id:
-            return {"error": "Artist not found"}
-            
-        albums = self.get_spotify_albums(artist_id)
-        album_id = None
-        album_art = None
-        
-        for album in albums:
-            if album["name"].lower() == album_name.lower():
-                album_id = album["id"]
-                album_art = album["image"]
-                break
-        
-        if not album_id:
-            return {"error": "Album not found"}
-            
-        count = self.count_word_occurrences(album_id, artist_name, word)
-        
-        # Store in cache
-        self.con.execute(
-            "INSERT INTO counts (Artist, Album, Word, Count, Album_Art) VALUES (?, ?, ?, ?, ?)",
-            [artist_name, album_name, word, count, album_art]
-        )
-        
-        return {"count": count, "album_art": album_art, "cached": False}
+        <div className="flex gap-2">
+          <button
+            onClick={analyzeWord}
+            disabled={!artist || !selectedAlbum || !word || loading}
+            className="flex-1 px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {loading ? 'Analyzing...' : 'Analyze Word'}
+          </button>
 
-    def generate_word_cloud(self, artist_name, album_name):
-        artist_id = self.get_spotify_artist_id(artist_name)
-        if not artist_id:
-            return {"error": "Artist not found"}
-            
-        albums = self.get_spotify_albums(artist_id)
-        album_id = None
-        
-        for album in albums:
-            if album["name"].lower() == album_name.lower():
-                album_id = album["id"]
-                break
-        
-        if not album_id:
-            return {"error": "Album not found"}
-            
-        tracks = self.get_spotify_album_tracks(album_id)
-        all_lyrics = ""
-        
-        for track_name in tracks:
-            lyrics = self.get_song_info_from_genius(track_name, artist_name)
-            all_lyrics += lyrics + " "
-            
-        wordcloud = WordCloud(width=800, height=400, background_color='white').generate(all_lyrics)
-        
-        img_data = BytesIO()
-        plt.figure(figsize=(10, 5))
-        plt.imshow(wordcloud, interpolation='bilinear')
-        plt.axis('off')
-        plt.savefig(img_data, format='png', bbox_inches='tight', pad_inches=0)
-        plt.close()
-        
-        img_data.seek(0)
-        return {"wordcloud": base64.b64encode(img_data.getvalue()).decode()}
+          <button
+            onClick={generateWordCloud}
+            disabled={!artist || !selectedAlbum || loading}
+            className="flex-1 px-4 py-2 bg-purple-500 text-white rounded-md hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {loading ? 'Generating...' : 'Generate Word Cloud'}
+          </button>
+        </div>
 
-class APIHandler(BaseHTTPRequestHandler):
-    def __init__(self, *args, **kwargs):
-        self.analyzer = LyricsAnalyzer()
-        super().__init__(*args, **kwargs)
+        {error && (
+          <div className="flex items-center gap-2 text-red-500 text-sm bg-red-50 p-3 rounded-md">
+            <AlertCircle className="w-5 h-5" />
+            {error}
+          </div>
+        )}
 
-    def do_OPTIONS(self):
-        self.send_response(200)
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
-        self.end_headers()
+        {result && !error && (
+          <div className="p-4 bg-gray-50 rounded-md">
+            <h2 className="text-lg font-semibold mb-2">Results</h2>
+            <p>Word count: {result.count}</p>
+            {result.cached && (
+              <p className="text-sm text-gray-500">(Retrieved from cache)</p>
+            )}
+            {result.album_art && (
+              <img
+                src={result.album_art}
+                alt="Album artwork"
+                className="mt-2 w-32 h-32 object-cover rounded-md"
+              />
+            )}
+          </div>
+        )}
 
-    def do_GET(self):
-        if self.path.startswith('/api/artist/'):
-            artist_name = self.path.split('/api/artist/')[1]
-            artist_id = self.analyzer.get_spotify_artist_id(artist_name)
-            if artist_id:
-                albums = self.analyzer.get_spotify_albums(artist_id)
-                self.send_json_response({"albums": albums})
-            else:
-                self.send_json_response({"error": "Artist not found"}, 404)
-        else:
-            self.send_json_response({"error": "Invalid endpoint"}, 404)
+        {wordcloud && (
+          <div>
+            <h2 className="text-lg font-semibold mb-2">Word Cloud</h2>
+            <img
+              src={`data:image/png;base64,${wordcloud}`}
+              alt="Word cloud"
+              className="w-full rounded-md"
+            />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
-    def do_POST(self):
-        content_length = int(self.headers['Content-Length'])
-        post_data = json.loads(self.rfile.read(content_length))
-
-        if self.path == '/api/analyze':
-            result = self.analyzer.get_word_count(
-                post_data.get('artist'),
-                post_data.get('album'),
-                post_data.get('word')
-            )
-            self.send_json_response(result)
-        elif self.path == '/api/wordcloud':
-            result = self.analyzer.generate_word_cloud(
-                post_data.get('artist'),
-                post_data.get('album')
-            )
-            self.send_json_response(result)
-        else:
-            self.send_json_response({"error": "Invalid endpoint"}, 404)
-
-    def send_json_response(self, data, status=200):
-        self.send_response(status)
-        self.send_header('Content-type', 'application/json')
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.end_headers()
-        self.wfile.write(json.dumps(data).encode())
-
-def run_server():
-    port = 8000
-    server_address = ('', port)
-    httpd = HTTPServer(server_address, APIHandler)
-    print(f'Starting Python server on port {port}...')
-    httpd.serve_forever()
-
-if __name__ == '__main__':
-    run_server()
